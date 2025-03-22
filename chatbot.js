@@ -130,7 +130,8 @@ document.addEventListener("DOMContentLoaded", function () {
         typingIndicator.style.display = "block";
         chatBox.scrollTop = chatBox.scrollHeight;
 
-        fetch("https://taplink-chatbot-production.up.railway.app/chat", {
+        // ✅ Send Message to Your Backend Chat API
+        fetch("https://newchatbot-production.up.railway.app/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: userMessage }),
@@ -144,8 +145,8 @@ document.addEventListener("DOMContentLoaded", function () {
             botMsgDiv.textContent = `Tribal Shaman: ${data.reply}`;
             chatBox.appendChild(botMsgDiv);
 
-            // ✅ Send interaction data to Zapier via a CORS Proxy
-            fetch("https://newchatbot-production.up.railway.app/chat", {
+            // ✅ Send Interaction Data to Your Backend Logging API
+            fetch("https://newchatbot-production.up.railway.app/log", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -153,7 +154,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     userMessage: userMessage,
                     botResponse: data.reply,
                 }),
-            }).catch(error => console.error("Zapier Logging Error:", error));
+            }).catch(error => console.error("Logging Error:", error));
 
             chatBox.scrollTop = chatBox.scrollHeight;
         })
@@ -167,4 +168,3 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     };
 });
-
