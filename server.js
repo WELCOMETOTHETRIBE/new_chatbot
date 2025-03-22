@@ -5,44 +5,55 @@ const axios = require("axios");
 const app = express();
 app.use(express.json());
 
-// ✅ Allow Taplink & other trusted origins
 app.use(cors({
-    origin: ["https://taplink.cc", "https://www.taplink.cc"], // Allow Taplink
+    origin: ["https://taplink.cc", "https://www.taplink.cc"],
     methods: "GET,POST",
     allowedHeaders: "Content-Type"
 }));
 
+const CHATBOT_API_URL = "https://newchatbot-production.up.railway.app/chat";
 const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/17370933/2e1xd58/";
 
-// ✅ Root route to confirm server is live
+// ✅ Add a root route to confirm the server is running
 app.get("/", (req, res) => {
     res.send("🚀 Jabronis Backend is Running! Ready to handle requests.");
+});
+
+// ✅ Debugging Chat Endpoint
+app.post("/chat", async (req, res) => {
+    try {
+        console.log("📝 Incoming Chat Message:", req.body);
+
+        if (!req.body.message) {
+            return res.status(400).json({ error: "No message provided!" });
+        }
+
+        // Simulate chatbot response (REMOVE THIS if connecting to real chatbot API)
+        const botResponse = { reply: `You said: ${req.body.message}` };
+
+        // Log to Zapier
+        await axios.post(ZAPIER_WEBHOOK_URL, {
+            timestamp: new Date().toISOString(),
+            userMessage: req.body.message,
+            botResponse: botResponse.reply
+        });
+
+        res.json(botResponse);
+    } catch (error) {
+        console.error("❌ Chatbot API Error:", error.message);
+        res.status(500).json({ error: "Chatbot service failed" });
+    }
 });
 
 // ✅ Proxy Zapier Logging to Avoid CORS Errors
 app.post("/send-to-zapier", async (req, res) => {
     try {
-        console.log("Received data:", req.body); // Debugging
+        console.log("📡 Sending data to Zapier:", req.body);
         await axios.post(ZAPIER_WEBHOOK_URL, req.body);
         res.json({ success: true });
     } catch (error) {
-        console.error("Zapier Logging Error:", error);
+        console.error("❌ Zapier Logging Error:", error.message);
         res.status(500).json({ error: "Failed to log to Zapier." });
-    }
-});
-
-// ✅ Chatbot API Proxy Route (Mirroring Jabronis Structure)
-const CHATBOT_API_URL = "https://newchatbot-production.up.railway.app/chat"; // Replace with actual chatbot API
-
-app.post("/chat", async (req, res) => {
-    try {
-        console.log("User message received:", req.body.message); // Debugging
-        const botResponse = await axios.post(CHATBOT_API_URL, { message: req.body.message });
-        
-        res.json({ reply: botResponse.data.reply });
-    } catch (error) {
-        console.error("Chatbot API Error:", error);
-        res.status(500).json({ reply: "⚠️ Error: Unable to connect to chatbot API." });
     }
 });
 
