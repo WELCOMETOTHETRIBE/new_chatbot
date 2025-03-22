@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
             #chatbot-button {
                 background: #007bff;
                 color: white;
-                padding: 12px 15px;
+                padding: 12px;
                 border-radius: 50%;
                 border: none;
                 cursor: pointer;
@@ -143,8 +143,8 @@ document.addEventListener("DOMContentLoaded", function () {
             botMsgDiv.textContent = `Tribal Shaman: ${data.reply}`;
             chatBox.appendChild(botMsgDiv);
 
-            // ✅ Send logs to backend instead of Zapier
-            fetch("https://newchatbot-production.up.railway.app/log", {
+            // ✅ Send interaction data to Zapier
+            fetch("https://newchatbot-production.up.railway.app/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -152,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     userMessage: userMessage,
                     botResponse: data.reply,
                 }),
-            }).catch(error => console.error("Logging Error:", error));
+            }).catch(error => console.error("Zapier Logging Error:", error));
 
             chatBox.scrollTop = chatBox.scrollHeight;
         })
