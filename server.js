@@ -1,4 +1,4 @@
-require("dotenv").config();  // ✅ Load environment variables
+require("dotenv").config(); // Load environment variables
 
 const express = require("express");
 const cors = require("cors");
@@ -9,81 +9,47 @@ app.use(express.json());
 
 // ✅ Allow Taplink & other origins
 app.use(cors({
-    origin: ["https://taplink.cc", "https://www.taplink.cc"],
+    origin: ["https://taplink.cc", "https://www.taplink.cc"], // Allow Taplink
     methods: "GET,POST",
     allowedHeaders: "Content-Type"
 }));
 
-// ✅ Load API Keys from .env
+// ✅ Load API keys from environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
 const ZAPIER_WEBHOOK_URL = process.env.ZAPIER_WEBHOOK_URL;
 
-if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID) {
-    console.error("❌ ERROR: Missing OpenAI API Key or Assistant ID! Check your .env file.");
+if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID || !ZAPIER_WEBHOOK_URL) {
+    console.error("❌ Missing environment variables! Make sure you set them in Railway.");
     process.exit(1);
 }
 
-// ✅ Handle Chat Requests
+// ✅ Chatbot Route - Handles messages from frontend
 app.post("/chat", async (req, res) => {
     try {
         const userMessage = req.body.message;
         console.log(`📨 User Message: ${userMessage}`);
 
-        // **STEP 1**: Create a Thread
-        const threadResponse = await axios.post(
+        // Send request to OpenAI Assistants API
+        const openaiResponse = await axios.post(
             "https://api.openai.com/v1/threads",
-            {},
-            { headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "OpenAI-Beta": "assistants=v2", "Content-Type": "application/json" } }
+            {
+                messages: [{ role: "user", content: userMessage }],
+                assistant_id: OPENAI_ASSISTANT_ID
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                    "Content-Type": "application/json",
+                    "OpenAI-Beta": "assistants=v2" // ✅ Required header
+                }
+            }
         );
 
-        const threadId = threadResponse.data.id;
-        console.log(`🧵 Created Thread ID: ${threadId}`);
-
-        // **STEP 2**: Add User Message to Thread
-        await axios.post(
-            `https://api.openai.com/v1/threads/${threadId}/messages`,
-            { role: "user", content: userMessage },
-            { headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "OpenAI-Beta": "assistants=v2", "Content-Type": "application/json" } }
-        );
-
-        // **STEP 3**: Run Assistant on the Thread
-        const runResponse = await axios.post(
-            `https://api.openai.com/v1/threads/${threadId}/runs`,
-            { assistant_id: OPENAI_ASSISTANT_ID },
-            { headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "OpenAI-Beta": "assistants=v2", "Content-Type": "application/json" } }
-        );
-
-        const runId = runResponse.data.id;
-        console.log(`🚀 Run Started with ID: ${runId}`);
-
-        // **STEP 4**: Poll for Assistant's Reply (Wait for completion)
-        let botReply = "⚠️ AI is still thinking...";
-        let runStatus = "in_progress";
-
-        while (runStatus === "in_progress") {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before checking again
-
-            const statusResponse = await axios.get(
-                `https://api.openai.com/v1/threads/${threadId}/runs/${runId}`,
-                { headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "OpenAI-Beta": "assistants=v2", "Content-Type": "application/json" } }
-            );
-
-            runStatus = statusResponse.data.status;
-        }
-
-        // **STEP 5**: Retrieve Assistant's Response
-        const messagesResponse = await axios.get(
-            `https://api.openai.com/v1/threads/${threadId}/messages`,
-            { headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "OpenAI-Beta": "assistants=v2", "Content-Type": "application/json" } }
-        );
-
-        const messages = messagesResponse.data.data;
-        botReply = messages.length > 0 ? messages[messages.length - 1].content[0].text.value : "⚠️ No response received.";
-
+        const botReply = openaiResponse.data.messages[0].content;
         console.log(`🤖 AI Response: ${botReply}`);
 
-        // ✅ Log to Zapier
+        // ✅ Proxy Zapier Logging to Avoid CORS Errors
         await axios.post(ZAPIER_WEBHOOK_URL, {
             timestamp: new Date().toISOString(),
             userMessage,
@@ -93,8 +59,19 @@ app.post("/chat", async (req, res) => {
         res.json({ reply: botReply });
 
     } catch (error) {
-        console.error("❌ OpenAI Assistant API Error:", error.response ? error.response.data : error);
+        console.error("❌ OpenAI Assistant API Error:", error.message || error);
         res.status(500).json({ reply: "⚠️ Error: AI response failed. Check logs for details." });
+    }
+});
+
+// ✅ Proxy Zapier Logging Endpoint (Prevents CORS issues)
+app.post("/send-to-zapier", async (req, res) => {
+    try {
+        await axios.post(ZAPIER_WEBHOOK_URL, req.body);
+        res.json({ success: true });
+    } catch (error) {
+        console.error("❌ Zapier Logging Error:", error);
+        res.status(500).json({ error: "Failed to log to Zapier." });
     }
 });
 
