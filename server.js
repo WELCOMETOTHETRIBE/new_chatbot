@@ -1,25 +1,40 @@
 const express = require("express");
 const cors = require("cors");
+const bodyParser = require("body-parser");
+const fetch = require("node-fetch");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-// Test Route
-app.get("/", (req, res) => {
-    res.send("🚀 New Chatbot Backend is Running!");
+// Chatbot API (Modify if needed)
+app.post("/chat", async (req, res) => {
+    const userMessage = req.body.message || "";
+    const botResponse = `I'm a chatbot! You said: ${userMessage}`;
+
+    res.json({ reply: botResponse });
 });
 
-// Chat Endpoint
-app.post("/chat", (req, res) => {
-    const userMessage = req.body.message || "Hello";
-    res.json({ reply: `Tribal Shaman: ${userMessage}` });
+// Logging API - Forward logs to Zapier
+app.post("/log", async (req, res) => {
+    try {
+        const logData = req.body;
+
+        await fetch(process.env.ZAPIER_WEBHOOK, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(logData),
+        });
+
+        res.json({ success: true, message: "Log sent to Zapier!" });
+    } catch (error) {
+        console.error("Error sending log:", error);
+        res.status(500).json({ success: false, message: "Failed to send log." });
+    }
 });
 
-// Start Server
 app.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
