@@ -6,13 +6,25 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// ✅ FIX: Use the real chatbot API (REPLACE WITH YOUR ACTUAL CHATBOT API)
-const CHATBOT_API_URL = "https://newchatbot-production.up.railway.app//chat"; 
+const CHATBOT_API_URL = "https://newchatbot-production.up.railway.app/chat";  // ✅ Use your backend
 const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/17370933/2e1xd58/";
 
-// ✅ Add a Root Route for Debugging
-app.get("/", (req, res) => {
-    res.send("🚀 Chatbot Backend is Running!");
+// ✅ Zapier Logging Route
+app.post("/log-to-zapier", async (req, res) => {
+    try {
+        const { userMessage, botResponse } = req.body;
+
+        await axios.post(ZAPIER_WEBHOOK_URL, {
+            timestamp: new Date().toISOString(),
+            userMessage,
+            botResponse
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error("❌ Zapier Logging Error:", error);
+        res.status(500).json({ success: false, error: "Failed to log to Zapier" });
+    }
 });
 
 // ✅ Chatbot Route
@@ -24,20 +36,18 @@ app.post("/chat", async (req, res) => {
             return res.status(400).json({ error: "Message is required" });
         }
 
-        // ✅ Send user message to the real chatbot API
         const botResponse = await axios.post(CHATBOT_API_URL, { message: userMessage });
 
-        // ✅ Log chat interactions to Zapier
-        await axios.post(ZAPIER_WEBHOOK_URL, {
-            timestamp: new Date().toISOString(),
+        // ✅ Now logging is done through the backend
+        axios.post("https://newchatbot-production.up.railway.app/log-to-zapier", {
             userMessage,
             botResponse: botResponse.data.reply
-        });
+        }).catch(err => console.error("❌ Failed to log to Zapier:", err));
 
         res.json({ reply: botResponse.data.reply });
 
     } catch (error) {
-        console.error("❌ Error communicating with chatbot API:", error);
+        console.error("❌ Chatbot API Error:", error);
         res.status(500).json({ reply: "⚠️ Sorry, something went wrong." });
     }
 });
