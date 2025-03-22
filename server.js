@@ -3,27 +3,43 @@ const cors = require("cors");
 const axios = require("axios");
 
 const app = express();
-app.use(cors());
+const PORT = process.env.PORT || 3000;
+
 app.use(express.json());
+app.use(cors());
 
-// ✅ Chatbot API Route (Handles User Messages)
+// Chatbot Route
 app.post("/chat", async (req, res) => {
-    const userMessage = req.body.message;
-    res.json({ reply: `Hello! You said: ${userMessage}` });  // Replace with AI logic if needed
-});
-
-// ✅ Logging Route (Sends Logs to Zapier)
-app.post("/log", async (req, res) => {
     try {
-        const logData = req.body;
-        await axios.post("https://hooks.zapier.com/hooks/catch/17370933/2e1xd58/", logData);
-        res.json({ status: "Logged to Zapier" });
+        const userMessage = req.body.message;
+        
+        // Replace with actual chatbot logic
+        const botResponse = `🤖 Tribal Shaman: You said, "${userMessage}"`;
+
+        // Send response
+        res.json({ reply: botResponse });
+
+        // ✅ Log message to Zapier
+        const zapierWebhook = process.env.ZAPIER_WEBHOOK;
+        if (zapierWebhook) {
+            await axios.post(zapierWebhook, {
+                timestamp: new Date().toISOString(),
+                userMessage: userMessage,
+                botResponse: botResponse
+            });
+        }
     } catch (error) {
-        console.error("Logging error:", error);
-        res.status(500).json({ error: "Failed to log data" });
+        console.error("Error handling request:", error);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
-// ✅ Start Server on Port 3000
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Health Check
+app.get("/", (req, res) => {
+    res.send("Chatbot Backend is Running! 🚀");
+});
+
+// Start Server
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+});
