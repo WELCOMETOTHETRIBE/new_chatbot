@@ -1,55 +1,57 @@
+require("dotenv").config();  // ✅ Load environment variables from .env
+
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-require("dotenv").config();
 
 const app = express();
 app.use(express.json());
 
-// ✅ Allow CORS for Taplink & Other Origins
+// ✅ Allow Taplink & other origins
 app.use(cors({
-    origin: ["https://taplink.cc", "https://www.taplink.cc"], // ✅ Allow Taplink
+    origin: ["https://taplink.cc", "https://www.taplink.cc"], // Allow Taplink
     methods: "GET,POST",
     allowedHeaders: "Content-Type"
 }));
 
-// ✅ Environment Variables
+// ✅ Load API Keys from .env
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
 const ZAPIER_WEBHOOK_URL = process.env.ZAPIER_WEBHOOK_URL;
 
-// ✅ Root Route (Optional)
-app.get("/", (req, res) => {
-    res.send("🔥 Tribal Shaman Chatbot is running!");
-});
+// 🚨 Ensure API Key & Assistant ID Exist
+if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID) {
+    console.error("❌ ERROR: Missing OpenAI API Key or Assistant ID! Check your .env file.");
+    process.exit(1);
+}
 
-// ✅ Chatbot Route
+// ✅ Handle Chat Requests
 app.post("/chat", async (req, res) => {
     try {
         const userMessage = req.body.message;
-        console.log("📨 User Message:", userMessage);
+        console.log(`📨 User Message: ${userMessage}`);
 
-        // ✅ Send Request to OpenAI Assistant API
-        const openAiResponse = await axios.post(
-            "https://api.openai.com/v1/threads/runs",
+        // 🔥 Call OpenAI Assistant API
+        const response = await axios.post(
+            "https://api.openai.com/v1/threads",
             {
-                assistant_id: OPENAI_ASSISTANT_ID,
-                thread: { messages: [{ role: "user", content: userMessage }] }
+                messages: [{ role: "user", content: userMessage }],
+                assistant_id: OPENAI_ASSISTANT_ID
             },
-            { 
-                headers: { 
+            {
+                headers: {
                     "Authorization": `Bearer ${OPENAI_API_KEY}`,
-                    "Content-Type": "application/json",
-                    "OpenAI-Beta": "assistants=v2" // ✅ Required Header!
-                } 
+                    "OpenAI-Beta": "assistants=v2",
+                    "Content-Type": "application/json"
+                }
             }
         );
 
-        // ✅ Extract AI Response
-        const botReply = openAiResponse.data?.choices?.[0]?.message?.content?.trim() || "⚠️ AI response error. No valid response received.";
-        console.log("🤖 AI Response:", botReply);
+        const botReply = response.data.choices?.[0]?.message?.content || "⚠️ AI did not respond.";
 
-        // ✅ Log to Zapier to Avoid CORS Errors
+        console.log(`🤖 OpenAI Response: ${botReply}`);
+
+        // ✅ Log to Zapier to track chat interactions
         await axios.post(ZAPIER_WEBHOOK_URL, {
             timestamp: new Date().toISOString(),
             userMessage,
@@ -59,19 +61,8 @@ app.post("/chat", async (req, res) => {
         res.json({ reply: botReply });
 
     } catch (error) {
-        console.error("❌ OpenAI Assistant API Error:", error.response ? error.response.data : error.message);
-        res.status(500).json({ reply: "⚠️ AI response failed. Check logs for details." });
-    }
-});
-
-// ✅ Proxy Route for Zapier (Prevents CORS Issues)
-app.post("/send-to-zapier", async (req, res) => {
-    try {
-        await axios.post(ZAPIER_WEBHOOK_URL, req.body);
-        res.json({ success: true });
-    } catch (error) {
-        console.error("❌ Zapier Logging Error:", error);
-        res.status(500).json({ error: "Failed to log to Zapier." });
+        console.error("❌ OpenAI Assistant API Error:", error);
+        res.status(500).json({ reply: "⚠️ Error: AI response failed. Check logs for details." });
     }
 });
 
