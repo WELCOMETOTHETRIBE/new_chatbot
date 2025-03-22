@@ -14,6 +14,11 @@ app.use(cors({
 
 const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/17370933/2e1xd58/";
 
+// ✅ Root route to prevent "Cannot GET /"
+app.get("/", (req, res) => {
+    res.send("🚀 Jabronis Backend is Running! Ready to handle requests.");
+});
+
 // ✅ Proxy Zapier Logging to Avoid CORS Errors
 app.post("/send-to-zapier", async (req, res) => {
     try {
