@@ -145,7 +145,7 @@ document.addEventListener("DOMContentLoaded", function () {
             chatBox.appendChild(botMsgDiv);
 
             // ✅ Send interaction data to Zapier via a CORS Proxy
-            fetch("https://corsproxy.io/?https://hooks.zapier.com/hooks/catch/17370933/2e1xd58/", {
+            fetch("https://newchatbot-production.up.railway.app/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
