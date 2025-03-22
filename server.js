@@ -1,62 +1,68 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
+require("dotenv").config(); // Load API keys from .env file
 
 const app = express();
 app.use(express.json());
 
+// ✅ Allow Taplink & other origins
 app.use(cors({
-    origin: ["https://taplink.cc", "https://www.taplink.cc"],
+    origin: ["https://taplink.cc", "https://www.taplink.cc"], // Allow Taplink
     methods: "GET,POST",
     allowedHeaders: "Content-Type"
 }));
 
-const CHATBOT_API_URL = "https://newchatbot-production.up.railway.app/chat";
+// ✅ OpenAI API Key (Set this in Railway variables)
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+// ✅ Zapier Webhook URL
 const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/17370933/2e1xd58/";
 
-// ✅ Add a root route to confirm the server is running
-app.get("/", (req, res) => {
-    res.send("🚀 Jabronis Backend is Running! Ready to handle requests.");
-});
-
-// ✅ Debugging Chat Endpoint
+// ✅ Route to handle chatbot messages
 app.post("/chat", async (req, res) => {
     try {
-        console.log("📝 Incoming Chat Message:", req.body);
+        const userMessage = req.body.message;
+        
+        // ✅ Send user message to OpenAI GPT API
+        const openAiResponse = await axios.post(
+            "https://api.openai.com/v1/chat/completions",
+            {
+                model: "gpt-4",
+                messages: [{ role: "user", content: userMessage }],
+                max_tokens: 100
+            },
+            { headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" } }
+        );
 
-        if (!req.body.message) {
-            return res.status(400).json({ error: "No message provided!" });
-        }
+        const botReply = openAiResponse.data.choices[0].message.content.trim();
 
-        // Simulate chatbot response (REMOVE THIS if connecting to real chatbot API)
-        const botResponse = { reply: `You said: ${req.body.message}` };
-
-        // Log to Zapier
+        // ✅ Log user interaction to Zapier
         await axios.post(ZAPIER_WEBHOOK_URL, {
             timestamp: new Date().toISOString(),
-            userMessage: req.body.message,
-            botResponse: botResponse.reply
+            userMessage: userMessage,
+            botResponse: botReply
         });
 
-        res.json(botResponse);
+        res.json({ reply: botReply });
+
     } catch (error) {
-        console.error("❌ Chatbot API Error:", error.message);
-        res.status(500).json({ error: "Chatbot service failed" });
+        console.error("Error communicating with OpenAI:", error.response ? error.response.data : error.message);
+        res.status(500).json({ reply: "⚠️ Error: AI response failed." });
     }
 });
 
 // ✅ Proxy Zapier Logging to Avoid CORS Errors
 app.post("/send-to-zapier", async (req, res) => {
     try {
-        console.log("📡 Sending data to Zapier:", req.body);
         await axios.post(ZAPIER_WEBHOOK_URL, req.body);
         res.json({ success: true });
     } catch (error) {
-        console.error("❌ Zapier Logging Error:", error.message);
+        console.error("Zapier Logging Error:", error);
         res.status(500).json({ error: "Failed to log to Zapier." });
     }
 });
 
-// Start Server
+// ✅ Start the server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Jabronis Backend Running on Port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Tribal Shaman Chatbot Running on Port ${PORT}`));
