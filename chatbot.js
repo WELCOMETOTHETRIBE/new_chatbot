@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
     chatContainer.id = "chatbot-container";
     chatContainer.innerHTML = `
         <style>
+            /* Basic Chatbox Styling */
             #chatbot-container {
                 position: fixed;
                 bottom: 20px;
@@ -15,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
             #chatbot-button {
                 background: #007bff;
                 color: white;
-                padding: 12px;
+                padding: 12px 15px;
                 border-radius: 50%;
                 border: none;
                 cursor: pointer;
@@ -129,7 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
         typingIndicator.style.display = "block";
         chatBox.scrollTop = chatBox.scrollHeight;
 
-        fetch("https://newchatbot-production.up.railway.app/chat", {
+        fetch("https://newchatbot-production.up.railway.app/chat", {  // ✅ Use your own backend
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: userMessage }),
@@ -143,12 +144,11 @@ document.addEventListener("DOMContentLoaded", function () {
             botMsgDiv.textContent = `Tribal Shaman: ${data.reply}`;
             chatBox.appendChild(botMsgDiv);
 
-            // ✅ Send interaction data to Zapier
-            fetch("https://newchatbot-production.up.railway.app/chat", {
+            // ✅ Send interaction data to backend (which logs to Zapier)
+            fetch("https://newchatbot-production.up.railway.app/log-to-zapier", {  // ✅ Now logs via backend
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    timestamp: new Date().toISOString(),
                     userMessage: userMessage,
                     botResponse: data.reply,
                 }),
