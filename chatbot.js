@@ -4,7 +4,6 @@ document.addEventListener("DOMContentLoaded", function () {
     chatContainer.id = "chatbot-container";
     chatContainer.innerHTML = `
         <style>
-            /* Basic Chatbox Styling */
             #chatbot-container {
                 position: fixed;
                 bottom: 20px;
@@ -130,7 +129,6 @@ document.addEventListener("DOMContentLoaded", function () {
         typingIndicator.style.display = "block";
         chatBox.scrollTop = chatBox.scrollHeight;
 
-        // ✅ Send Message to Your Backend Chat API
         fetch("https://newchatbot-production.up.railway.app/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -145,7 +143,7 @@ document.addEventListener("DOMContentLoaded", function () {
             botMsgDiv.textContent = `Tribal Shaman: ${data.reply}`;
             chatBox.appendChild(botMsgDiv);
 
-            // ✅ Send Interaction Data to Your Backend Logging API
+            // ✅ Send logs to backend instead of Zapier
             fetch("https://newchatbot-production.up.railway.app/log", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
