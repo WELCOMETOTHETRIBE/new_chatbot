@@ -46,7 +46,7 @@ app.post("/chat", async (req, res) => {
         );
 
         // ✅ Extract AI Response
-        const botReply = openAiResponse.data.choices[0].message.content.trim();
+        const botReply = openAiResponse.data?.choices?.[0]?.message?.content?.trim() || "⚠️ AI response error. No valid response received.";
         console.log("🤖 AI Response:", botReply);
 
         // ✅ Log to Zapier to Avoid CORS Errors
