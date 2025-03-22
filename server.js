@@ -9,6 +9,11 @@ app.use(cors());
 const CHATBOT_API_URL = "https://newchatbot-production.up.railway.app/chat"; // Replace if needed
 const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/17370933/2e1xd58/";
 
+// ✅ Serve a homepage instead of "Cannot GET /"
+app.get("/", (req, res) => {
+    res.send("<h1>🔥 Tribal Shaman Chatbot is Running! 🔥</h1>");
+});
+
 // Chatbot API Route
 app.post("/chat", async (req, res) => {
     try {
