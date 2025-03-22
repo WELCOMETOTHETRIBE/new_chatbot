@@ -1,64 +1,36 @@
-const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
 app.use(express.json());
 app.use(cors());
 
-// Root Route - Health Check
-app.get('/', (req, res) => {
-    res.send('✅ Chatbot Backend is Running');
-});
+const CHATBOT_API_URL = "https://newchatbot-production.up.railway.app//chat";
+const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/17370933/2e1xd58/";
 
-// Chatbot API Route
-app.post('/chat', async (req, res) => {
+app.post("/chat", async (req, res) => {
     try {
         const userMessage = req.body.message;
+        
+        // Send user message to chatbot API
+        const botResponse = await axios.post(CHATBOT_API_URL, { message: userMessage });
 
-        if (!userMessage) {
-            return res.status(400).json({ error: "Message is required" });
-        }
-
-        // Call AI Chatbot API (Replace with your actual chatbot API URL)
-        const response = await axios.post('https://newchatbot-production.up.railway.app/chat', {
-            message: userMessage
-        });
-
-        res.json({ reply: response.data.reply });
-    } catch (error) {
-        console.error("🔥 Chatbot API Error:", error.message);
-        res.status(500).json({ error: "Failed to fetch chatbot response" });
-    }
-});
-
-// Zapier Logging Route
-app.post('/log', async (req, res) => {
-    try {
-        const { userMessage, botResponse } = req.body;
-
-        if (!userMessage || !botResponse) {
-            return res.status(400).json({ error: "Missing required data" });
-        }
-
-        // Send Data to Zapier Webhook
-        await axios.post(process.env.ZAPIER_WEBHOOK, {
+        // Send chat log to Zapier
+        await axios.post(ZAPIER_WEBHOOK_URL, {
             timestamp: new Date().toISOString(),
             userMessage,
-            botResponse
+            botResponse: botResponse.data.reply
         });
 
-        res.json({ success: true, message: "Logged successfully" });
+        res.json({ reply: botResponse.data.reply });
+
     } catch (error) {
-        console.error("🔥 Zapier Logging Error:", error.message);
-        res.status(500).json({ error: "Failed to log data" });
+        console.error("Error communicating with chatbot API:", error);
+        res.status(500).json({ reply: "⚠️ Sorry, something went wrong." });
     }
 });
 
 // Start Server
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
