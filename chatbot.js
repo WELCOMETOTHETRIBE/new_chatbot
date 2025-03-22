@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(response => response.json())
         .then(data => {
             typingIndicator.style.display = "none";
-            chatBox.innerHTML += `<div style="background: #f8d7da; padding: 5px; margin: 5px;">Bot: ${data.reply}</div>`;
+            chatBox.innerHTML += `<div style="background: #f8d7da; padding: 5px; margin: 5px;">Tribal Shaman: ${data.reply}</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             // ✅ Send to Zapier Webhook for logging
