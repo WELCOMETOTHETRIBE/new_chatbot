@@ -30,13 +30,10 @@ app.post("/chat", async (req, res) => {
         const userMessage = req.body.message;
         console.log(`📨 User Message: ${userMessage}`);
 
-        // Send request to OpenAI Assistants API
-        const openaiResponse = await axios.post(
+        // ✅ Step 1: Create a Thread
+        const threadResponse = await axios.post(
             "https://api.openai.com/v1/threads",
-            {
-                messages: [{ role: "user", content: userMessage }],
-                assistant_id: OPENAI_ASSISTANT_ID
-            },
+            {}, // Empty body for thread creation
             {
                 headers: {
                     "Authorization": `Bearer ${OPENAI_API_KEY}`,
@@ -46,7 +43,45 @@ app.post("/chat", async (req, res) => {
             }
         );
 
-        const botReply = openaiResponse.data.messages[0].content;
+        const threadId = threadResponse.data.id;
+        console.log(`🧵 Created Thread ID: ${threadId}`);
+
+        // ✅ Step 2: Run Assistant with user input
+        const runResponse = await axios.post(
+            `https://api.openai.com/v1/threads/${threadId}/messages`,
+            {
+                messages: [{ role: "user", content: userMessage }]
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                    "Content-Type": "application/json",
+                    "OpenAI-Beta": "assistants=v2"
+                }
+            }
+        );
+
+        console.log("🕒 Waiting for Assistant Response...");
+        
+        // ✅ Step 3: Retrieve Response
+        const runStatus = await axios.get(
+            `https://api.openai.com/v1/threads/${threadId}/runs`,
+            {
+                headers: {
+                    "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                    "Content-Type": "application/json",
+                    "OpenAI-Beta": "assistants=v2"
+                }
+            }
+        );
+
+        const runData = runStatus.data.data[0]; // Get first run result
+
+        // ✅ Extract bot response safely
+        const botReply = runData && runData.messages && runData.messages.length > 0
+            ? runData.messages[0].content
+            : "⚠️ Error: No response from AI.";
+
         console.log(`🤖 AI Response: ${botReply}`);
 
         // ✅ Proxy Zapier Logging to Avoid CORS Errors
@@ -59,7 +94,7 @@ app.post("/chat", async (req, res) => {
         res.json({ reply: botReply });
 
     } catch (error) {
-        console.error("❌ OpenAI Assistant API Error:", error.message || error);
+        console.error("❌ OpenAI Assistant API Error:", error.response?.data || error.message);
         res.status(500).json({ reply: "⚠️ Error: AI response failed. Check logs for details." });
     }
 });
