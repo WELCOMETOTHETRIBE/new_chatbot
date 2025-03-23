@@ -83,7 +83,6 @@ app.post("/chat", async (req, res) => {
 
     // ✅ Step 4: Wait for Completion & Get Response
     let runStatus = "in_progress";
-    let botReply = "⚠️ AI is still processing...";
 
     while (runStatus === "in_progress" || runStatus === "queued") {
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2s
@@ -102,6 +101,11 @@ app.post("/chat", async (req, res) => {
       console.log(`⌛ Assistant Status: ${runStatus}`);
     }
 
+    if (runStatus !== "completed") {
+      console.error(`❌ Assistant Run Failed: ${runStatus}`);
+      return res.status(500).json({ reply: "⚠️ AI could not complete the request." });
+    }
+
     // ✅ Step 5: Get Final Assistant Reply
     const messagesResponse = await axios.get(
       `https://api.openai.com/v1/threads/${threadId}/messages`,
@@ -113,11 +117,13 @@ app.post("/chat", async (req, res) => {
       }
     );
 
+    // ✅ Extract Assistant Messages Properly
     const assistantMessages = messagesResponse.data.data
       .filter((msg) => msg.role === "assistant")
-      .map((msg) => msg.content.text.value);
+      .flatMap((msg) => (msg.content ? msg.content.map((c) => c.text.value) : []))
+      .filter((text) => text);
 
-    botReply = assistantMessages.length > 0 ? assistantMessages[0] : "⚠️ No AI response received.";
+    const botReply = assistantMessages.length > 0 ? assistantMessages.join(" ") : "⚠️ No AI response received.";
     console.log(`🤖 AI Response: ${botReply}`);
 
     // ✅ Step 6: Log to Zapier
